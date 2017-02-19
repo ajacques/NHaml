@@ -7,6 +7,11 @@ using System.Web.NHaml.Parser;
 using System.Web.NHaml.Parser.Rules;
 using System.Reflection;
 using System.Text;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System.Runtime.Loader;
+using Microsoft.CodeAnalysis.Emit;
 
 namespace NHaml.Walkers
 {
@@ -18,6 +23,8 @@ namespace NHaml.Walkers
         private MethodInfo writeMethodInfo;
         private StringBuilder textRun;
         private Type modelType;
+        private Compilation compilation;
+        private ClassDeclarationSyntax compilationTargetClass;
 
         public LinqDocumentWalker(Type modelType)
         {
@@ -27,11 +34,13 @@ namespace NHaml.Walkers
             writeMethodInfo = typeof(TextWriter).GetMethod("Write", new Type[] { typeof(string) });
             textRun = new StringBuilder();
             this.modelType = modelType;
+            compilation = CSharpCompilation.Create("Compilation");
+            compilationTargetClass = SyntaxFactory.ClassDeclaration("__haml_UserCode_CompilationTarget");
         }
 
         public void Walk(HamlDocument document)
         {
-            this.Walk(document.Children);
+            Walk(document.Children);
         }
 
         public void Walk(IEnumerable<HamlNode> nodes)
@@ -45,27 +54,23 @@ namespace NHaml.Walkers
             {
                 Type nodeType = node.GetType();
                 if (nodeType == typeof(HamlNodeTagId) || nodeType == typeof(HamlNodeTagClass) || nodeType == typeof(HamlNodeHtmlAttributeCollection))
-                    this.Walk(node.Children);
+                    Walk(node.Children);
                 if (nodeType == typeof(HamlNodeTextContainer))
-                    this.Walk(node.Children);
+                    Walk(node.Children);
                 if (nodeType == typeof(HamlNodeTag))
-                    this.Walk((HamlNodeTag)node);
-                if (nodeType == typeof(HamlNodeHtmlComment))
-                    continue;
-                if (nodeType == typeof(HamlNodeHamlComment))
-                    continue;
+                    Walk((HamlNodeTag)node);
                 if (nodeType == typeof(HamlNodeEval))
-                    continue;
+                    Walk((HamlNodeEval)node);
                 if (nodeType == typeof(HamlNodeCode))
                     continue;
                 if (nodeType == typeof(HamlNodeTextLiteral))
                     textRun.Append(((HamlNodeTextLiteral)node).Content);
                 if (nodeType == typeof(HamlNodeTextVariable))
-                    this.Walk((HamlNodeTextVariable)node);
+                    Walk((HamlNodeTextVariable)node);
                 if (nodeType == typeof(HamlNodeDocType))
-                    this.Walk((HamlNodeDocType)node);
+                    Walk((HamlNodeDocType)node);
                 if (nodeType == typeof(HamlNodeHtmlAttribute))
-                    this.Walk((HamlNodeHtmlAttribute)node);
+                    Walk((HamlNodeHtmlAttribute)node);
                 if (nodeType == typeof(HamlNodePartial))
                     continue;
             }
@@ -74,6 +79,16 @@ namespace NHaml.Walkers
         private void Walk(HamlNodeDocType docType)
         {
             textRun.Append("<!DOCTYPE html>");
+        }
+
+        private void Walk(HamlNodeEval node)
+        {
+            compilation = compilation.AddSyntaxTrees(CSharpSyntaxTree.Create(compilationTargetClass));
+            MemoryStream stream = new MemoryStream();
+            EmitResult result = compilation.Emit(stream);
+            stream.Flush();
+            stream.Seek(0, SeekOrigin.Begin);
+            Assembly assembly = AssemblyLoadContext.Default.LoadFromStream(stream);
         }
 
         private void Walk(HamlNodeTextVariable node)
@@ -94,7 +109,7 @@ namespace NHaml.Walkers
                     MethodInfo methInfo = objectType.GetMethod(block);
                     objectType = methInfo.ReturnType;
                     expr = Expression.Call(expr, methInfo);
-                 }
+                }
             }
             _expressions.Add(Expression.Call(_textWriterParameter, writeMethodInfo, expr));
         }
