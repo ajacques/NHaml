@@ -18,6 +18,7 @@ namespace NHaml.Walkers
     public class LinqDocumentWalker
     {
         private IList<Expression> _expressions;
+        private IList<Tuple<int, string>> _lateBoundExpressions;
         private ParameterExpression _textWriterParameter;
         private ParameterExpression _modelParameter;
         private MethodInfo writeMethodInfo;
@@ -25,6 +26,7 @@ namespace NHaml.Walkers
         private Type modelType;
         private Compilation compilation;
         private ClassDeclarationSyntax compilationTargetClass;
+        private CompilationUnitSyntax compilationUnit;
 
         public LinqDocumentWalker(Type modelType)
         {
@@ -34,8 +36,13 @@ namespace NHaml.Walkers
             writeMethodInfo = typeof(TextWriter).GetMethod("Write", new Type[] { typeof(string) });
             textRun = new StringBuilder();
             this.modelType = modelType;
-            compilation = CSharpCompilation.Create("Compilation");
+            compilation = CSharpCompilation.Create("Compilation", references: new[] {
+                MetadataReference.CreateFromFile(typeof(Object).GetTypeInfo().Assembly.Location),
+                MetadataReference.CreateFromFile(modelType.GetTypeInfo().Assembly.Location)
+            }).WithOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
             compilationTargetClass = SyntaxFactory.ClassDeclaration("__haml_UserCode_CompilationTarget");
+            compilationUnit = SyntaxFactory.CompilationUnit();
+            _lateBoundExpressions = new List<Tuple<int, String>>();
         }
 
         public void Walk(HamlDocument document)
@@ -83,12 +90,15 @@ namespace NHaml.Walkers
 
         private void Walk(HamlNodeEval node)
         {
-            compilation = compilation.AddSyntaxTrees(CSharpSyntaxTree.Create(compilationTargetClass));
-            MemoryStream stream = new MemoryStream();
-            EmitResult result = compilation.Emit(stream);
-            stream.Flush();
-            stream.Seek(0, SeekOrigin.Begin);
-            Assembly assembly = AssemblyLoadContext.Default.LoadFromStream(stream);
+            var methodName = node.Content.GetHashCode().ToString("x");
+            var method = SyntaxFactory.MethodDeclaration(SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.StringKeyword)), methodName)
+                .WithParameterList(SyntaxFactory.ParameterList(
+                    SyntaxFactory.SeparatedList(new[] { SyntaxFactory.Parameter(SyntaxFactory.Identifier("model")).WithType(SyntaxFactory.IdentifierName(modelType.FullName)) })))
+                .WithBody(SyntaxFactory.Block(SyntaxFactory.ReturnStatement(SyntaxFactory.ParseExpression(node.Content))))
+                .WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PublicKeyword), SyntaxFactory.Token(SyntaxKind.StaticKeyword)));
+            compilationTargetClass = compilationTargetClass.AddMembers(method);
+            FlushStringRun();
+            _lateBoundExpressions.Add(new Tuple<int, string>(_expressions.Count, methodName));
         }
 
         private void Walk(HamlNodeTextVariable node)
@@ -111,6 +121,7 @@ namespace NHaml.Walkers
                     expr = Expression.Call(expr, methInfo);
                 }
             }
+            FlushStringRun();
             _expressions.Add(Expression.Call(_textWriterParameter, writeMethodInfo, expr));
         }
 
@@ -134,7 +145,7 @@ namespace NHaml.Walkers
                 textRun.Append("</");
                 textRun.Append(node.NamespaceQualifiedTagName);
             }
-            else
+            else if (!node.IsSelfClosing)
             {
                 textRun.Append("/");
             }
@@ -145,6 +156,7 @@ namespace NHaml.Walkers
         public Delegate Compile()
         {
             FlushStringRun();
+            CommitStageTwo();
             var method = Expression.Block(_expressions);
             var lambda = Expression.Lambda(method, _textWriterParameter, _modelParameter);
             Delegate output = lambda.Compile();
@@ -152,8 +164,35 @@ namespace NHaml.Walkers
             return output;
         }
 
+        private void CommitStageTwo()
+        {
+            compilationUnit = compilationUnit.AddMembers(compilationTargetClass);
+            compilation = compilation.AddSyntaxTrees(CSharpSyntaxTree.Create(compilationUnit));
+            MemoryStream stream = new MemoryStream();
+            EmitResult result = compilation.Emit(stream);
+            if (!result.Success)
+            {
+                throw new Exception("Syntax error");
+            }
+            stream.Flush();
+            stream.Seek(0, SeekOrigin.Begin);
+            Assembly assembly = AssemblyLoadContext.Default.LoadFromStream(stream);
+            Type type = assembly.GetType(compilationTargetClass.Identifier.Text);
+            int offset = 0;
+            foreach (var expr in _lateBoundExpressions)
+            {
+                MethodInfo evalMethod = type.GetMethod(expr.Item2);
+                _expressions.Insert(expr.Item1 + offset, Expression.Call(_textWriterParameter, writeMethodInfo, Expression.Call(evalMethod, _modelParameter)));
+                offset++;
+            }
+        }
+
         private void FlushStringRun()
         {
+            if (textRun.Length == 0)
+            {
+                return;
+            }
             _expressions.Add(Expression.Call(_textWriterParameter, writeMethodInfo, Expression.Constant(textRun.ToString())));
             textRun.Clear();
         }
