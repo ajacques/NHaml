@@ -15,6 +15,27 @@ simplicity, terseness, performance and that it outputs nicely formatted XML.
 Additionally, the NHaml view engine provides support for Rails style layouts and
 partials and ships with an ASP.NET MVC view engine. 
 
+What is this fork?
+================
+This is a partial-rewrite of the original engine to support ASP.NET Core and the .net Framework Core/Standard editions using Roslyn. .net Core doesn't support the same code generation system that the full .net Framework used, so I'm replacing everything with dynamic Linq Expressions and Roslyn compiled assemblies. The new system should be pretty fast since everything gets compiled down to static TextWriter.Write calls for most of the HAML code with calls to pre-compiled IL code generated from any inline C# code in the HAML template.
+
+Example:
+```
+.Lambda #Lambda1<System.Action`2[System.IO.TextWriter,System.String]>(
+    System.IO.TextWriter $var1,
+    System.String $var2) {
+    .Block() {
+        .Call $var1.Write("<!DOCTYPE html><html lang="en"><head><title>Hello world</title><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0" name="viewport"/></head><body data="")
+        ;
+        .Call $var1.Write("");
+        .Call $var1.Write(.Call (.Call (.Call $var2.GetType()).ToString()).ToUpperInvariant());
+        .Call $var1.Write(""><div>");
+        .Call $var1.Write(.Call __haml_UserCode_CompilationTarget.binder());
+        .Call $var1.Write("<div></div></div><div></div></body></html>")
+    }
+}
+```
+
 License
 ================
 Copyright (c) 2010 Andrew Peters, Steve Wagner, Simon Cropp, Zsolt Sz. Sztupák
