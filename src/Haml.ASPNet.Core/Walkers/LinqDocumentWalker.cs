@@ -36,12 +36,14 @@ namespace NHaml.Walkers
             writeMethodInfo = typeof(TextWriter).GetMethod("Write", new Type[] { typeof(string) });
             textRun = new StringBuilder();
             this.modelType = modelType;
-            compilation = CSharpCompilation.Create("Compilation", references: new[] {
-                MetadataReference.CreateFromFile(typeof(Object).GetTypeInfo().Assembly.Location),
-                MetadataReference.CreateFromFile(modelType.GetTypeInfo().Assembly.Location)
-            }).WithOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            compilation = CSharpCompilation.Create("Compilation")
+                .WithReferences(
+                    MetadataReference.CreateFromFile(typeof(Object).GetTypeInfo().Assembly.Location),
+                    MetadataReference.CreateFromFile(modelType.GetTypeInfo().Assembly.Location))
+                .WithOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
             compilationTargetClass = SyntaxFactory.ClassDeclaration("__haml_UserCode_CompilationTarget");
-            compilationUnit = SyntaxFactory.CompilationUnit();
+            compilationUnit = SyntaxFactory.CompilationUnit()
+                .WithUsings(SyntaxFactory.List(new[] { SyntaxFactory.UsingDirective(SyntaxFactory.IdentifierName("System")) }));
             _lateBoundExpressions = new List<Tuple<int, String>>();
         }
 
@@ -93,7 +95,7 @@ namespace NHaml.Walkers
             var methodName = node.Content.GetHashCode().ToString("x");
             var method = SyntaxFactory.MethodDeclaration(SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.StringKeyword)), methodName)
                 .WithParameterList(SyntaxFactory.ParameterList(
-                    SyntaxFactory.SeparatedList(new[] { SyntaxFactory.Parameter(SyntaxFactory.Identifier("model")).WithType(SyntaxFactory.IdentifierName(modelType.FullName)) })))
+                    SyntaxFactory.SeparatedList(new[] { SyntaxFactory.Parameter(SyntaxFactory.Identifier("model")).WithType(SyntaxFactory.ParseTypeName(modelType.FullName)) })))
                 .WithBody(SyntaxFactory.Block(SyntaxFactory.ReturnStatement(SyntaxFactory.ParseExpression(node.Content))))
                 .WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PublicKeyword), SyntaxFactory.Token(SyntaxKind.StaticKeyword)));
             compilationTargetClass = compilationTargetClass.AddMembers(method);
