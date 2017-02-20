@@ -20,18 +20,61 @@ What is this fork?
 This is a partial-rewrite of the original engine to support ASP.NET Core and the .net Framework Core/Standard editions using Roslyn. .net Core doesn't support the same code generation system that the full .net Framework used, so I'm replacing everything with dynamic Linq Expressions and Roslyn compiled assemblies. The new system should be pretty fast since everything gets compiled down to static TextWriter.Write calls for most of the HAML code with calls to pre-compiled IL code generated from any inline C# code in the HAML template.
 
 Example:
+HAML:
+```
+!!!
+%html{ lang: 'en' }
+  %head
+    %title Hello world
+    %meta{ charset: 'utf-8' }
+    %meta{ content: 'width=device-width, initial-scale=1.0, maximum-scale=1.0', name: 'viewport' }
+  %body{ data: model.GetType.ToString.ToUpperInvariant }
+    .page-wrap
+      = DateTime.Now.ToString("yyyy-mm-dd")
+      %h1= new Random().Next().ToString()
+      %p= model.ToString()
+      .content-pane.container
+      - if true
+        %div Is True
+    .modal-backdrop.in
+```
+
+Gets compiled to:
+
 ```
 .Lambda #Lambda1<System.Action`2[System.IO.TextWriter,System.String]>(
     System.IO.TextWriter $var1,
     System.String $var2) {
     .Block() {
-        .Call $var1.Write("<!DOCTYPE html><html lang="en"><head><title>Hello world</title><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0" name="viewport"/></head><body data="")
-        ;
-        .Call $var1.Write("");
+        .Call $var1.Write("<!DOCTYPE html><html lang="en"><head><title>Hello world</title><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0" name="viewport"/></head><body data="");
         .Call $var1.Write(.Call (.Call (.Call $var2.GetType()).ToString()).ToUpperInvariant());
         .Call $var1.Write(""><div>");
-        .Call $var1.Write(.Call __haml_UserCode_CompilationTarget.binder());
-        .Call $var1.Write("<div></div></div><div></div></body></html>")
+        .Call $var1.Write(.Call __haml_UserCode_CompilationTarget.ee74c85($var2));
+        .Call $var1.Write("<h1>");
+        .Call $var1.Write(.Call __haml_UserCode_CompilationTarget.9344995e($var2));
+        .Call $var1.Write("</h1><p>");
+        .Call $var1.Write(.Call __haml_UserCode_CompilationTarget.aa1fcd6e($var2));
+        .Call $var1.Write("</p><div></div></div><div></div></body></html>")
+    }
+}
+```
+
+Along with this secondary class:
+```
+using System;
+class __haml_UserCode_CompilationTarget
+{
+    public static string ee74c85(System.String model)
+    {
+        return DateTime.Now.ToString("yyyy-mm-dd");
+    }
+    public static string 9344995e(System.String model)
+    {
+        return new Random().Next().ToString();
+    }
+    public static string aa1fcd6e(System.String model)
+    {
+        return model.ToString();
     }
 }
 ```
@@ -58,15 +101,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
-
-Issues
-================
-Our IssueTracker is located here: [http://code.google.com/p/nhaml/issues/list]
-
-Getting Help
-===========
-The Google Group NHaml-Users at ( [http://groups.google.com/group/nhaml-users] ) is the best place to go.
-
 
 Contributors
 ============
