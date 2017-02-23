@@ -74,10 +74,28 @@ namespace NHaml.Walkers
                 this.ifBlock = ifBlock;
             }
 
+            public IEnumerable<IIntermediateNode> ElseBlock
+            {
+                get;
+                set;
+            }
+
             public Expression Build()
             {
                 MethodInfo evalMethod = walker.compilationTargetType.GetMethod(methodName);
-                return Expression.IfThen(Expression.Call(evalMethod, walker._modelParameter), Expression.Block(ifBlock.Select(n => n.Build())));
+                var block = ifBlock.Select(n => n.Build());
+                var conditional = Expression.Call(evalMethod, walker._modelParameter);
+                var ifInnerBlock = block.Count() > 1 ? Expression.Block(block) : block.First();
+                if (ElseBlock != null)
+                {
+                    var elseInnerBlock = ElseBlock.Select(n => n.Build());
+
+                    return Expression.IfThenElse(conditional, ifInnerBlock, Expression.Block(elseInnerBlock));
+                }
+                else
+                {
+                    return Expression.IfThen(conditional, ifInnerBlock);
+                }
             }
         }
 
@@ -166,11 +184,12 @@ namespace NHaml.Walkers
 
         private void Walk(HamlNodeCode node)
         {
-            if (node.Content.Trim().StartsWith("if"))
+            var content = node.Content.Trim();
+            if (content.StartsWith("if"))
             {
                 FlushStringRun();
-                int start = node.Content.IndexOf('(') + 1;
-                string expression = node.Content.Substring(start, node.Content.Length - start - 1);
+                int start = content.IndexOf('(') + 1;
+                string expression = content.Substring(start, content.Length - start - 1);
                 string methodName = CompileCodeThunk(expression, SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.BoolKeyword)));
                 FlushStringRun();
                 var oldNodes = nodes;
@@ -180,6 +199,24 @@ namespace NHaml.Walkers
                 FlushStringRun();
                 oldNodes.Add(new ConditionalExpression(this, methodName, nodes));
                 nodes = oldNodes;
+            }
+            else if (content == "else")
+            {
+                var lastNode = nodes[nodes.Count - 1] as ConditionalExpression;
+                if (lastNode == null)
+                {
+                    throw new Exception("An else block must directly follow an if block");
+                }
+                var oldNodes = nodes;
+                nodes = new List<IIntermediateNode>();
+                Walk(node.Children);
+                FlushStringRun();
+                lastNode.ElseBlock = nodes;
+                nodes = oldNodes;
+            }
+            else
+            {
+                throw new Exception("Side-effect free haml code block unsupported.");
             }
         }
 
