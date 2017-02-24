@@ -56,7 +56,7 @@ namespace System.Web.NHaml.Parser.Rules
                 }
                 string nameValuePair = GetNextAttributeToken(attributeCollection, closingBracketChar, ref index);
                 if (!string.IsNullOrEmpty(nameValuePair))
-                    AddChild(new HamlNodeHtmlAttribute(SourceFileLineNum, nameValuePair));
+                    AddChild(HamlNodeHtmlAttribute.FromNameValuePair(SourceFileLineNum, nameValuePair));
                 index++;
             }
         }

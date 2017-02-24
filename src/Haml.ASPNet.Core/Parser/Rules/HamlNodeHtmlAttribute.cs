@@ -8,21 +8,34 @@ namespace System.Web.NHaml.Parser.Rules
         private string _name = string.Empty;
         private char _quoteChar = '\'';
 
-        public HamlNodeHtmlAttribute(int sourceFileLineNo, string nameValuePair)
+        public static HamlNodeHtmlAttribute FromNameValuePair(int lineNumber, string nameValuePair)
+        {
+            int index = 0;
+            string name = ParseName(ref index, nameValuePair, lineNumber);
+
+            return new HamlNodeHtmlAttribute(lineNumber, nameValuePair);
+        }
+
+        private HamlNodeHtmlAttribute(int sourceFileLineNo, string nameValuePair)
             : base(sourceFileLineNo, nameValuePair)
         {
             int index = 0;
-            ParseName(ref index);
-            ParseValue(index);
+            _name = ParseName(ref index, nameValuePair, sourceFileLineNo);
+            AddChild(new HamlNodeTextContainer(sourceFileLineNo, ParseValue(index, nameValuePair)));
         }
-
-        private void ParseValue(int index)
+        public HamlNodeHtmlAttribute(int lineNumber, string name, string value)
+            : base(lineNumber, string.Format("{0}: {1}", name, value))
         {
-            if (index >= Content.Length) return;
-
-            string value = Content.Substring(index + 1).Trim();
+            _name = name;
 
             AddChild(new HamlNodeTextContainer(SourceFileLineNum, GetValue(value)));
+        }
+
+        private static string ParseValue(int index, string content)
+        {
+            if (index >= content.Length) return null;
+
+            return content.Substring(index + 1).Trim();
         }
 
         protected override bool IsContentGeneratingTag
@@ -40,13 +53,13 @@ namespace System.Web.NHaml.Parser.Rules
             get { return _quoteChar; }
         }
 
-        private void ParseName(ref int index)
+        private static string ParseName(ref int index, string content, int lineNumber)
         {
-            string result = HtmlStringHelper.ExtractTokenFromTagString(Content, ref index, new[] { ':', '\0' });
+            string result = HtmlStringHelper.ExtractTokenFromTagString(content, ref index, new[] { ':', '\0' });
             if (string.IsNullOrEmpty(result))
-                throw new HamlMalformedTagException("Malformed HTML attribute \"" + Content + "\"", SourceFileLineNum);
+                throw new HamlMalformedTagException("Malformed HTML attribute \"" + content + "\"", lineNumber);
 
-            _name = result.TrimEnd(':').TrimStart(' ');
+            return result.TrimEnd(':').TrimStart(' ');
         }
 
         private string GetValue(string value)

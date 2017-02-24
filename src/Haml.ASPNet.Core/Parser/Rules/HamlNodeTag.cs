@@ -15,12 +15,14 @@ namespace System.Web.NHaml.Parser.Rules
         private string _tagName = string.Empty;
         private string _namespace = string.Empty;
         private WhitespaceRemoval _whitespaceRemoval = WhitespaceRemoval.None;
+        private IList<HamlNodeHtmlAttribute> _attributes;
 
         public HamlNodeTag(IO.HamlLine nodeLine)
             : base(nodeLine)
         {
             IsSelfClosing = false;
             int pos = 0;
+            _attributes = new List<HamlNodeHtmlAttribute>();
 
             SetNamespaceAndTagName(nodeLine.Content, ref pos);
             ParseClassAndIdNodes(nodeLine.Content, ref pos);
@@ -36,8 +38,10 @@ namespace System.Web.NHaml.Parser.Rules
 
         public IEnumerable<HamlNodeHtmlAttribute> Attributes
         {
-            get;
-            private set;
+            get
+            {
+                return _attributes;
+            }
         }
 
         private void SetNamespaceAndTagName(string content, ref int pos)
@@ -81,7 +85,10 @@ namespace System.Web.NHaml.Parser.Rules
                         "Malformed HTML Attributes collection \"" + attributes + "\".", SourceFileLineNum);
                 var attribCollection = new HamlNodeHtmlAttributeCollection(SourceFileLineNum, attributes);
 
-                Attributes = attribCollection.Children.OfType<HamlNodeHtmlAttribute>();
+                foreach (var attribute in attribCollection.Children.OfType<HamlNodeHtmlAttribute>().OrderBy(n => n.Name))
+                {
+                    _attributes.Add(attribute);
+                }
 
                 pos++;
             }
@@ -175,6 +182,7 @@ namespace System.Web.NHaml.Parser.Rules
             pos++;
             string className = GetHtmlToken(content, ref pos);
             var newTag = new HamlNodeTagClass(SourceFileLineNum, className);
+            _attributes.Add(new HamlNodeHtmlAttribute(SourceFileLineNum, "class", string.Format("'{0}'", className)));
             AddChild(newTag);
         }
 
