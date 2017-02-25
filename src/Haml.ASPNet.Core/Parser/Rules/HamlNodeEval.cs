@@ -7,6 +7,9 @@ namespace System.Web.NHaml.Parser.Rules
         public HamlNodeEval(HamlLine line)
             : base(line) { }
 
+        public HamlNodeEval(int lineNumber, string content)
+            : base(lineNumber, content) { }
+
         protected override bool IsContentGeneratingTag
         {
             get { return true; }

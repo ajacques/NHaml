@@ -181,7 +181,7 @@ namespace NHaml.Walkers
         {
             CompileAndInjectCodeThunk(node.Content);
         }
-
+        
         private void Walk(HamlNodeCode node)
         {
             var content = node.Content.Trim();
@@ -237,7 +237,41 @@ namespace NHaml.Walkers
             textRun.Append('<');
             textRun.Append(node.NamespaceQualifiedTagName);
 
-            this.Walk(node.Attributes);
+            var attributes = node.Attributes.GroupBy(a => a.Name);
+            foreach (var attrGroup in attributes)
+            {
+                textRun.AppendFormat(" {0}=\"", attrGroup.Key);
+
+                bool leadingSpace = false;
+                var values = attrGroup.Select(n => n.Child).OfType<HamlNodeTextLiteral>().OrderBy(n => n.Content).Select(n => n.Content);
+                if (values.Any())
+                {
+                    leadingSpace = true;
+                    textRun.Append(values.Aggregate((accum, val) => string.Format("{0} {1}", accum, val)));
+                }
+
+                var thunkValues = attrGroup.Select(n => n.Child).OfType<HamlNodeEval>();
+                if (thunkValues.Any())
+                {
+                    if (leadingSpace)
+                    {
+                        textRun.Append(' ');
+                        leadingSpace = false;
+                    }
+                    FlushStringRun();
+                    foreach (var value in thunkValues)
+                    {
+                        if (leadingSpace)
+                        {
+                            textRun.Append(' ');
+                        }
+                        CompileAndInjectCodeThunk(value.Content);
+                        leadingSpace = true;
+                    }
+                }
+
+                textRun.Append('"');
+            }
             if (node.Children.Count > 0)
             {
                 textRun.Append('>');

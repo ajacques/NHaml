@@ -21,14 +21,22 @@ namespace System.Web.NHaml.Parser.Rules
         {
             int index = 0;
             _name = ParseName(ref index, nameValuePair, sourceFileLineNo);
-            AddChild(new HamlNodeTextContainer(sourceFileLineNo, ParseValue(index, nameValuePair)));
+            var value = ParseValue(index, nameValuePair);
+            if (value.StartsWith("\"") || value.StartsWith("\'"))
+            {
+                Child = new HamlNodeTextContainer(sourceFileLineNo, value).Children[0];
+            }
+            else
+            {
+                Child = new HamlNodeEval(sourceFileLineNo, value);
+            }
         }
         public HamlNodeHtmlAttribute(int lineNumber, string name, string value)
             : base(lineNumber, string.Format("{0}: {1}", name, value))
         {
             _name = name;
 
-            AddChild(new HamlNodeTextContainer(SourceFileLineNum, GetValue(value)));
+            Child = new HamlNodeTextContainer(SourceFileLineNum, GetValue(value)).Children[0];
         }
 
         private static string ParseValue(int index, string content)
@@ -46,6 +54,12 @@ namespace System.Web.NHaml.Parser.Rules
         public string Name
         {
             get { return _name; }
+        }
+
+        public HamlNode Child
+        {
+            get;
+            private set;
         }
 
         public char QuoteChar

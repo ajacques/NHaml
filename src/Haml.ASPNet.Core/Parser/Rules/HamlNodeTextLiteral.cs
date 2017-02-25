@@ -3,7 +3,7 @@
     public class HamlNodeTextLiteral : HamlNode
     {
         public HamlNodeTextLiteral(int sourceLineNum, string content)
-            : base(sourceLineNum, content)
+            : base(sourceLineNum, content.Trim('\''))
         { }
 
         protected override bool IsContentGeneratingTag

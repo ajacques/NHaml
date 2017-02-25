@@ -183,7 +183,6 @@ namespace System.Web.NHaml.Parser.Rules
             string className = GetHtmlToken(content, ref pos);
             var newTag = new HamlNodeTagClass(SourceFileLineNum, className);
             _attributes.Add(new HamlNodeHtmlAttribute(SourceFileLineNum, "class", string.Format("'{0}'", className)));
-            AddChild(newTag);
         }
 
         private string GetHtmlToken(string content, ref int pos)

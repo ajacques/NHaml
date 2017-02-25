@@ -88,7 +88,7 @@ namespace System.Web.NHaml.IO
                         inSingleQuote = true;
                     else if (curChar == '\"')
                         inDoubleQuote = true;
-                    else if (curChar == ')' || curChar == '}')
+                    else if (curChar == '}')
                     {
                         inAttributes = false;
                         acceptAlphas = false;
