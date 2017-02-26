@@ -38,7 +38,7 @@ namespace NHaml
             timer.Start();
             renderer.DynamicInvoke(new object[] { writer, viewModel });
             timer.Stop();
-            context.HttpContext.Response.Headers.Add("X-Runtime-us", new Microsoft.Extensions.Primitives.StringValues((timer.ElapsedTicks / 10).ToString()));
+            Console.WriteLine("X-Runtime-us: {0}", timer.ElapsedTicks / 10);
             return writer.FlushAsync();
         }
     }
