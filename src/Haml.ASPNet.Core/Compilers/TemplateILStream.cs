@@ -1,9 +1,5 @@
 ﻿using Haml.Framework;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Emit;
-using NHaml.Walkers.Exceptions;
 using NHaml.Walkers.IntermediateNodes;
 using System;
 using System.Collections.Generic;
@@ -12,12 +8,9 @@ using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Runtime.Loader;
 using System.Text;
-using System.Web.NHaml.Parser;
-using System.Web.NHaml.Parser.Rules;
 
-namespace NHaml.Walkers
+namespace Haml.Compiling
 {
     public class TemplateILStream
     {
@@ -28,6 +21,7 @@ namespace NHaml.Walkers
         private Type modelType;
         private Stack<IList<IIntermediateNode>> nodes;
         private Type compilationTargetType;
+        private ParameterExpression baseClassVariable;
 
         [DebuggerDisplay("Late-bound method: {MethodName}()")]
         private class LateBoundMethodCall : IIntermediateNode
@@ -72,21 +66,25 @@ namespace NHaml.Walkers
                 set;
             }
 
+            private Expression ReduceNodeSet(IEnumerable<IIntermediateNode> nodes)
+            {
+                var block = nodes.Select(n => n.Build());
+                return block.Count() > 1 ? Expression.Block(block) : block.First();
+            }
+
             public Expression Build()
             {
                 MethodInfo evalMethod = walker.compilationTargetType.GetMethod(methodName);
-                var block = ifBlock.Select(n => n.Build());
                 var conditional = Expression.Call(evalMethod, walker._modelParameter);
-                var ifInnerBlock = block.Count() > 1 ? Expression.Block(block) : block.First();
                 if (ElseBlock != null)
                 {
                     var elseInnerBlock = ElseBlock.Select(n => n.Build());
 
-                    return Expression.IfThenElse(conditional, ifInnerBlock, Expression.Block(elseInnerBlock));
+                    return Expression.IfThenElse(conditional, ReduceNodeSet(ifBlock), ReduceNodeSet(ElseBlock));
                 }
                 else
                 {
-                    return Expression.IfThen(conditional, ifInnerBlock);
+                    return Expression.IfThen(conditional, ReduceNodeSet(ifBlock));
                 }
             }
         }
@@ -115,6 +113,8 @@ namespace NHaml.Walkers
             textRun = new StringBuilder();
             nodes = new Stack<IList<IIntermediateNode>>();
             nodes.Push(new List<IIntermediateNode>());
+            baseClassVariable = Expression.Variable(typeof(BaseViewClass));
+            Nodes.Add(new StaticExpression(baseClassVariable));
         }
 
         private IList<IIntermediateNode> Nodes
@@ -166,7 +166,7 @@ namespace NHaml.Walkers
         public void CallThunkMethod(string methodName)
         {
             FlushStringRun();
-            Nodes.Add(new LateBoundMethodCall(null, methodName));
+            Nodes.Add(new LateBoundMethodCall(this, methodName));
         }
 
         public void ConditionalEnd(string methodName)
@@ -174,21 +174,20 @@ namespace NHaml.Walkers
             FlushStringRun();
             var ifNodes = nodes.Pop();
 
-            Nodes.Add(new ConditionalExpression(null, methodName, ifNodes));
+            Nodes.Add(new ConditionalExpression(this, methodName, ifNodes));
         }
 
         public LambdaExpression Build(Type compilationTargetType)
         {
             if (nodes.Count != 1)
             {
-                throw new Exception("HAML node stack misaligned. Expected only 1 root node.");
+                throw new IndexOutOfRangeException("HAML node stack misaligned. Expected only 1 root node.");
             }
             FlushStringRun();
             this.compilationTargetType = compilationTargetType;
-            var block = Expression.Block(nodes.Peek().Select(n => n.Build()));
+            var block = Expression.Block(Nodes.Select(n => n.Build()));
             return Expression.Lambda(block, _textWriterParameter, _modelParameter);
         }
-        
 
         private void FlushStringRun()
         {
