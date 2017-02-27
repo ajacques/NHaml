@@ -6,7 +6,7 @@ using System.Web.NHaml.TemplateResolution;
 using System.Web.NHaml.Parser;
 using System.Web.NHaml.IO;
 using System.IO;
-using NHaml.Walkers;
+using Haml.Compiling;
 using System.Diagnostics;
 
 namespace NHaml

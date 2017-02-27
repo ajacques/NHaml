@@ -1,5 +1,9 @@
 ﻿using Haml.Framework;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Emit;
+using NHaml.Walkers.Exceptions;
 using NHaml.Walkers.IntermediateNodes;
 using System;
 using System.Collections.Generic;
@@ -8,7 +12,10 @@ using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.Loader;
 using System.Text;
+using System.Web.NHaml.Parser;
+using System.Web.NHaml.Parser.Rules;
 
 namespace Haml.Compiling
 {
@@ -181,7 +188,7 @@ namespace Haml.Compiling
         {
             if (nodes.Count != 1)
             {
-                throw new IndexOutOfRangeException("HAML node stack misaligned. Expected only 1 root node.");
+                throw new Exception("HAML node stack misaligned. Expected only 1 root node.");
             }
             FlushStringRun();
             this.compilationTargetType = compilationTargetType;

@@ -7,7 +7,7 @@ using System.Linq;
 using System.Web.NHaml.Parser;
 using System.Web.NHaml.Parser.Rules;
 
-namespace NHaml.Walkers
+namespace Haml.Compiling
 {
     public class LinqDocumentWalker
     {
