@@ -1,9 +1,4 @@
-﻿using Haml.Framework;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Emit;
-using NHaml.Walkers.Exceptions;
+﻿using Microsoft.CodeAnalysis;
 using NHaml.Walkers.IntermediateNodes;
 using System;
 using System.Collections.Generic;
@@ -12,10 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Runtime.Loader;
 using System.Text;
-using System.Web.NHaml.Parser;
-using System.Web.NHaml.Parser.Rules;
 
 namespace Haml.Compiling
 {
@@ -50,7 +42,7 @@ namespace Haml.Compiling
             public Expression Build()
             {
                 MethodInfo evalMethod = walker.compilationTargetType.GetMethod(MethodName);
-                return Expression.Call(walker._textWriterParameter, walker.writeMethodInfo, Expression.Call(evalMethod, walker._modelParameter));
+                return Expression.Call(walker._textWriterParameter, walker.writeMethodInfo, Expression.Call(walker.baseClassVariable, evalMethod, walker._modelParameter));
             }
         }
 
@@ -82,7 +74,7 @@ namespace Haml.Compiling
             public Expression Build()
             {
                 MethodInfo evalMethod = walker.compilationTargetType.GetMethod(methodName);
-                var conditional = Expression.Call(evalMethod, walker._modelParameter);
+                var conditional = Expression.Call(walker.baseClassVariable, evalMethod, walker._modelParameter);
                 if (ElseBlock != null)
                 {
                     var elseInnerBlock = ElseBlock.Select(n => n.Build());
@@ -120,8 +112,6 @@ namespace Haml.Compiling
             textRun = new StringBuilder();
             nodes = new Stack<IList<IIntermediateNode>>();
             nodes.Push(new List<IIntermediateNode>());
-            baseClassVariable = Expression.Variable(typeof(BaseViewClass));
-            Nodes.Add(new StaticExpression(baseClassVariable));
         }
 
         private IList<IIntermediateNode> Nodes
@@ -192,8 +182,12 @@ namespace Haml.Compiling
             }
             FlushStringRun();
             this.compilationTargetType = compilationTargetType;
-            var block = Expression.Block(Nodes.Select(n => n.Build()));
-            return Expression.Lambda(block, _textWriterParameter, _modelParameter);
+            baseClassVariable = Expression.Variable(compilationTargetType);
+            Nodes.Insert(0, new StaticExpression(Expression.Assign(baseClassVariable, Expression.New(compilationTargetType))));
+            var block = Expression.Block(new[] { baseClassVariable }, Nodes.Select(n => n.Build()));
+            var lambda = Expression.Lambda(block, _textWriterParameter, _modelParameter);
+
+            return lambda;
         }
 
         private void FlushStringRun()

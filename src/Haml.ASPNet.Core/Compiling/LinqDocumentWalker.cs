@@ -12,13 +12,12 @@ namespace Haml.Compiling
     public class LinqDocumentWalker
     {
         private Type compilationTargetType;
-        private TemplateILStream _templateILStream;
+        private ITemplateRenderer _templateILStream;
         private HamlCodeHostBuilder _codeClassBuilder;
 
         public LinqDocumentWalker(Type modelType)
         {
-            _templateILStream = new TemplateILStream(modelType);
-            _codeClassBuilder = new HamlCodeHostBuilder(modelType);
+            _templateILStream = _codeClassBuilder = new HamlCodeHostBuilder(modelType);
         }
 
         public void Walk(HamlDocument document)
@@ -47,7 +46,7 @@ namespace Haml.Compiling
                 if (nodeType == typeof(HamlNodeCode))
                     Walk((HamlNodeCode)node);
                 if (nodeType == typeof(HamlNodeTextLiteral))
-                    _templateILStream.WriteStaticString(((HamlNodeTextLiteral)node).Content);
+                    _templateILStream.Write(((HamlNodeTextLiteral)node).Content);
                 if (nodeType == typeof(HamlNodeTextVariable))
                     Walk((HamlNodeTextVariable)node);
                 if (nodeType == typeof(HamlNodeDocType))
@@ -59,7 +58,7 @@ namespace Haml.Compiling
 
         private void Walk(HamlNodeDocType docType)
         {
-            _templateILStream.WriteStaticString("<!DOCTYPE html>");
+            _templateILStream.Write("<!DOCTYPE html>");
         }
 
         private void Walk(HamlNodeEval node)
@@ -100,28 +99,28 @@ namespace Haml.Compiling
 
         private void Walk(HamlNodeHtmlAttribute node)
         {
-            _templateILStream.WriteStaticString(" {0}=\"", node.Name);
+            _templateILStream.Write(" {0}=\"", node.Name);
             this.Walk(node.Children);
-            _templateILStream.WriteStaticString('"');
+            _templateILStream.Write('"');
         }
 
         private void Walk(HamlNodeTag node)
         {
-            _templateILStream.WriteStaticString('<');
-            _templateILStream.WriteStaticString(node.NamespaceQualifiedTagName);
+            _templateILStream.Write('<');
+            _templateILStream.Write(node.NamespaceQualifiedTagName);
 
             // There's two ways of defining a class, so we need to reconcile them and create the string writer
             var attributes = node.Attributes.GroupBy(a => a.Name);
             foreach (var attrGroup in attributes)
             {
-                _templateILStream.WriteStaticString(" {0}=\"", attrGroup.Key);
+                _templateILStream.Write(" {0}=\"", attrGroup.Key);
 
                 bool leadingSpace = false;
                 var values = attrGroup.Select(n => n.Child).OfType<HamlNodeTextLiteral>().OrderBy(n => n.Content).Select(n => n.Content);
                 if (values.Any())
                 {
                     leadingSpace = true;
-                    _templateILStream.WriteStaticString(values.Aggregate((accum, val) => string.Format("{0} {1}", accum, val)));
+                    _templateILStream.Write(values.Aggregate((accum, val) => string.Format("{0} {1}", accum, val)));
                 }
 
                 var thunkValues = attrGroup.Select(n => n.Child).OfType<HamlNodeEval>();
@@ -129,48 +128,47 @@ namespace Haml.Compiling
                 {
                     if (leadingSpace)
                     {
-                        _templateILStream.WriteStaticString(' ');
+                        _templateILStream.Write(' ');
                         leadingSpace = false;
                     }
                     foreach (var value in thunkValues)
                     {
                         if (leadingSpace)
                         {
-                            _templateILStream.WriteStaticString(' ');
+                            _templateILStream.Write(' ');
                         }
                         CompileAndInjectCodeThunk(value.Content);
                         leadingSpace = true;
                     }
                 }
 
-                _templateILStream.WriteStaticString('"');
+                _templateILStream.Write('"');
             }
             if (node.Children.Count > 0)
             {
-                _templateILStream.WriteStaticString('>');
+                _templateILStream.Write('>');
                 this.Walk(node.Children);
-                _templateILStream.WriteStaticString("</");
-                _templateILStream.WriteStaticString(node.NamespaceQualifiedTagName);
+                _templateILStream.Write("</");
+                _templateILStream.Write(node.NamespaceQualifiedTagName);
             }
             else if (!node.IsSelfClosing)
             {
-                _templateILStream.WriteStaticString('/');
+                _templateILStream.Write('/');
             }
 
-            _templateILStream.WriteStaticString('>');
+            _templateILStream.Write('>');
         }
 
-        public Delegate Compile()
+        public Type Compile()
         {
-            var compilationTargetType = _codeClassBuilder.CompileClass();
-            return _templateILStream.Build(compilationTargetType).Compile();
+            return _codeClassBuilder.Compile();
         }
 
         private string CompileAndInjectCodeThunk(string content)
         {
             string methodName = CompileCodeThunk(content, SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.StringKeyword)));
 
-            _templateILStream.CallThunkMethod(methodName);
+            //_templateILStream.CallThunkMethod(methodName);
 
             return methodName;
         }
