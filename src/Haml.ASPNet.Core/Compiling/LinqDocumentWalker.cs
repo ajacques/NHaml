@@ -168,7 +168,7 @@ namespace Haml.Compiling
         {
             string methodName = CompileCodeThunk(content, SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.StringKeyword)));
 
-            //_templateILStream.CallThunkMethod(methodName);
+            _codeClassBuilder.CallMethod(methodName);
 
             return methodName;
         }

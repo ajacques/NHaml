@@ -11,25 +11,26 @@ using System.IO;
 using System.Reflection;
 using System.Runtime.Loader;
 using System.Text;
-using System.Linq;
 
 namespace Haml.Compiling
 {
     public class HamlCodeHostBuilder : ITemplateRenderer
     {
-        private Compilation compilation;
-        private ClassDeclarationSyntax compilationTargetClass;
-        private CompilationUnitSyntax compilationUnit;
-        private Type modelType;
-        private MethodDeclarationSyntax renderMethod;
+        private Compilation _compilation;
+        private ClassDeclarationSyntax _compilationTargetClass;
+        private CompilationUnitSyntax _compilationUnit;
+        private Type _modelType;
+        private MethodDeclarationSyntax _renderMethod;
         private StringBuilder textRun;
         private Stack<IList<StatementSyntax>> expressions;
 
         public HamlCodeHostBuilder(Type modelType)
         {
-            this.modelType = modelType;
+            this._modelType = modelType;
+            var modelTypeToken = SyntaxFactory.ParseTypeName(modelType.FullName);
             var rootDirectory = Path.GetDirectoryName(typeof(object).GetTypeInfo().Assembly.Location);
-            compilation = CSharpCompilation.Create("Compilation")
+            var className = "__haml_UserCode_CompilationTarget";
+            _compilation = CSharpCompilation.Create("Compilation")
                 .WithReferences(
                     MetadataReference.CreateFromFile(typeof(object).GetTypeInfo().Assembly.Location),
                     MetadataReference.CreateFromFile(Path.Combine(rootDirectory, "System.Runtime.dll")),
@@ -38,15 +39,24 @@ namespace Haml.Compiling
                     MetadataReference.CreateFromFile(typeof(HtmlHelper).GetTypeInfo().Assembly.Location),
                     MetadataReference.CreateFromFile(typeof(BaseViewClass).GetTypeInfo().Assembly.Location))
                 .WithOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, optimizationLevel: OptimizationLevel.Release));
-            compilationTargetClass = SyntaxFactory.ClassDeclaration("__haml_UserCode_CompilationTarget");
-            compilationUnit = SyntaxFactory.CompilationUnit()
+            _compilationTargetClass = SyntaxFactory.ClassDeclaration(className);
+            _compilationUnit = SyntaxFactory.CompilationUnit()
                 .WithUsings(SyntaxFactory.List(new[] { SyntaxFactory.UsingDirective(SyntaxFactory.IdentifierName("System")) }));
 
-            compilationTargetClass = compilationTargetClass.AddMembers(
-                SyntaxFactory.PropertyDeclaration(SyntaxFactory.ParseTypeName(typeof(HtmlHelper).FullName), "Html"));
             textRun = new StringBuilder();
+            _compilationTargetClass = _compilationTargetClass
+                /*.AddMembers(
+                    SyntaxFactory.PropertyDeclaration(SyntaxFactory.ParseTypeName(typeof(HtmlHelper).FullName), "Html"))*/
+                .AddModifiers(SyntaxFactory.Token(SyntaxKind.SealedKeyword))
+                .AddMembers(
+                    SyntaxFactory.ConstructorDeclaration(className)
+                        .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
+                        .AddParameterListParameters(SyntaxFactory.Parameter(SyntaxFactory.Identifier("_modelType")).WithType(modelTypeToken))
+                        .AddBodyStatements(SyntaxFactory.ExpressionStatement(
+                            SyntaxFactory.AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, SyntaxFactory.IdentifierName("model"), SyntaxFactory.IdentifierName("_modelType")))))
+               .AddMembers(SyntaxFactory.FieldDeclaration(SyntaxFactory.VariableDeclaration(modelTypeToken, SyntaxFactory.SingletonSeparatedList(SyntaxFactory.VariableDeclarator("model")))));
 
-            renderMethod = SyntaxFactory.MethodDeclaration(SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.VoidKeyword)), "render")
+            _renderMethod = SyntaxFactory.MethodDeclaration(SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.VoidKeyword)), "render")
                                 .AddParameterListParameters(SyntaxFactory.Parameter(SyntaxFactory.Identifier("textWriter")).WithType(SyntaxFactory.ParseTypeName(typeof(TextWriter).FullName)))
                                 .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword));
 
@@ -61,11 +71,9 @@ namespace Haml.Compiling
             var body = SyntaxFactory.ParseExpression(content);
 
             var method = SyntaxFactory.MethodDeclaration(returnType, methodName)
-                .WithParameterList(SyntaxFactory.ParameterList(
-                    SyntaxFactory.SeparatedList(new[] { SyntaxFactory.Parameter(SyntaxFactory.Identifier("model")).WithType(SyntaxFactory.ParseTypeName(modelType.FullName)) })))
                 .WithBody(SyntaxFactory.Block(SyntaxFactory.ReturnStatement(body)))
                 .WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PrivateKeyword)));
-            compilationTargetClass = compilationTargetClass.AddMembers(method);
+            _compilationTargetClass = _compilationTargetClass.AddMembers(method);
 
             return methodName;
         }
@@ -77,15 +85,16 @@ namespace Haml.Compiling
                 throw new Exception("HAML node stack misaligned. Expected only 1 root node.");
             }
             FlushStringRun();
-            renderMethod = renderMethod.AddBodyStatements(expressions.Peek().ToArray());
+            _renderMethod = _renderMethod.AddBodyStatements(SyntaxFactory.Block(expressions.Peek()));
 
-            compilationTargetClass = compilationTargetClass.AddMembers(renderMethod);
-            compilationUnit = compilationUnit
-                .AddMembers(compilationTargetClass);
-            compilationUnit = compilationUnit.NormalizeWhitespace("    ", true);
-            compilation = compilation.AddSyntaxTrees(CSharpSyntaxTree.Create(compilationUnit));
+            _compilationTargetClass = _compilationTargetClass.AddMembers(_renderMethod);
+            _compilationUnit = _compilationUnit
+                .AddMembers(_compilationTargetClass);
+            _compilationUnit = _compilationUnit.NormalizeWhitespace("    ", true);
+            _compilation = _compilation.AddSyntaxTrees(CSharpSyntaxTree.Create(_compilationUnit));
             MemoryStream stream = new MemoryStream();
-            EmitResult result = compilation.Emit(stream);
+            EmitResult result = _compilation.Emit(stream);
+            _compilation.Emit("Output.dll");
             if (!result.Success)
             {
                 throw new HamlCompilationFailedException(result.Diagnostics);
@@ -93,7 +102,7 @@ namespace Haml.Compiling
             stream.Flush();
             stream.Seek(0, SeekOrigin.Begin);
             Assembly assembly = AssemblyLoadContext.Default.LoadFromStream(stream);
-            return assembly.GetType(compilationTargetClass.Identifier.Text);
+            return assembly.GetType(_compilationTargetClass.Identifier.Text);
         }
 
         public void Write(string content)
@@ -109,6 +118,12 @@ namespace Haml.Compiling
         public void Write(string format, params object[] formats)
         {
             textRun.AppendFormat(format, formats);
+        }
+
+        public void CallMethod(string name)
+        {
+            FlushStringRun();
+            expressions.Peek().Add(SyntaxFactory.ExpressionStatement(SyntaxFactory.ParseExpression(string.Format("textWriter.Write({0}())", name))));
         }
 
         public void ConditionalBegin()
@@ -131,7 +146,6 @@ namespace Haml.Compiling
         {
             FlushStringRun();
             var expression = expressions.Pop();
-            var t = CSharpSyntaxTree.ParseText("public class Foo { public void t() { if (true) { this.DoFirst(); this.DoSecond(); }}}");
             var conditional = SyntaxFactory.ParseExpression(string.Format("{0}()", methodName));
             expressions.Peek().Add(SyntaxFactory.IfStatement(conditional, SyntaxFactory.Block(expression)));
         }
