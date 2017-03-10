@@ -8,16 +8,16 @@ of any web document, without the use of inline code. Haml functions as a
 replacement for inline page templating systems such as PHP, ERB, and ASP.
 However, Haml avoids the need for explicitly coding XHTML into the template,
 because it is actually an abstract description of the XHTML, with some code
-to generate dynamic content." 
+to generate dynamic content."
 
 In other words, NHaml is an external DSL for XML. It’s primary qualities are it’s
 simplicity, terseness, performance and that it outputs nicely formatted XML.
 Additionally, the NHaml view engine provides support for Rails style layouts and
-partials and ships with an ASP.NET MVC view engine. 
+partials and ships with an ASP.NET MVC view engine.
 
 What is this fork?
 ================
-This is a partial-rewrite of the original engine to support ASP.NET Core and the .net Framework Core/Standard editions using Roslyn. .net Core doesn't support the same code generation system that the full .net Framework used, so I'm replacing everything with dynamic Linq Expressions and Roslyn compiled assemblies. The new system should be pretty fast since everything gets compiled down to static TextWriter.Write calls for most of the HAML code with calls to pre-compiled IL code generated from any inline C# code in the HAML template.
+This is a partial-rewrite of the original engine to support ASP.NET Core and the .net Framework Core/Standard editions using Roslyn. .net Core doesn't support the same code generation system that the full .net Framework used, so I'm replacing everything with Roslyn compiled assemblies. The new system should be pretty fast since everything gets compiled down to static TextWriter.Write calls for most of the HAML code with calls to pre-compiled IL code generated from any inline C# code in the HAML template.
 
 Example:
 HAML:
@@ -42,40 +42,81 @@ HAML:
 Gets compiled to:
 
 ```
-.Lambda #Lambda1<System.Action`2[System.IO.TextWriter,System.String]>(
-    System.IO.TextWriter $var1,
-    System.String $var2) {
-    .Block() {
-        .Call $var1.Write("<!DOCTYPE html><html lang="en"><head><title>Hello world</title><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0" name="viewport"/></head><body data="");
-        .Call $var1.Write(.Call (.Call (.Call $var2.GetType()).ToString()).ToUpperInvariant());
-        .Call $var1.Write(""><div>");
-        .Call $var1.Write(.Call __haml_UserCode_CompilationTarget.ee74c85($var2));
-        .Call $var1.Write("<h1>");
-        .Call $var1.Write(.Call __haml_UserCode_CompilationTarget.9344995e($var2));
-        .Call $var1.Write("</h1><p>");
-        .Call $var1.Write(.Call __haml_UserCode_CompilationTarget.aa1fcd6e($var2));
-        .Call $var1.Write("</p><div></div></div><div></div></body></html>")
-    }
-}
-```
-
-Along with this secondary class:
-```
-using System;
-class __haml_UserCode_CompilationTarget
+sealed class __haml_UserCode_CompilationTarget
 {
-    public static string ee74c85(System.String model)
-    {
-        return DateTime.Now.ToString("yyyy-mm-dd");
-    }
-    public static string 9344995e(System.String model)
-    {
-        return new Random().Next().ToString();
-    }
-    public static string aa1fcd6e(System.String model)
-    {
-        return model.ToString();
-    }
+   public __haml_UserCode_CompilationTarget(System.String _modelType)
+   {
+      model = _modelType;
+   }
+
+   System.String model;
+   private string _91ff3507()
+   {
+      return DateTime.Now.ToString(\"yyyy\");
+   }
+
+   private string _779c068e()
+   {
+      return DateTime.Now.ToString(\"yyyy-mm-dd\");
+   }
+
+   private string _79112ab0()
+   {
+      return new Random().Next().ToString();
+   }
+
+   private string _ea04f18()
+   {
+      return model.ToString();
+   }
+
+   private bool _e6180ba9()
+   {
+      return true;
+   }
+
+   private bool _4112ef9a()
+   {
+      return 1 > 0;
+   }
+
+   private bool _9aec0d90()
+   {
+      return false;
+   }
+
+   public void render(System.IO.TextWriter textWriter)
+   {
+      {
+         textWriter.Write(\"<!DOCTYPE html><html lang=\\\"en\\\"><head><title>Hello world</title><meta charset=\\\"utf-8\\\"/><meta content=\\\"width=device-width, initial-scale=1.0, maximum-scale=1.0\\\" name=\\\"viewport\\\"/></head><body><div class=\\\"page-wrap \");
+         textWriter.Write(_91ff3507());
+         textWriter.Write(\"\\\">\");
+         textWriter.Write(_779c068e());
+         textWriter.Write(\"<h1>\");
+         textWriter.Write(_79112ab0());
+         textWriter.Write(\"</h1><p>\");
+         textWriter.Write(_ea04f18());
+         textWriter.Write(\"</p><div class=\\\"container content-pane\\\"/>\");
+         if (_e6180ba9())
+         {
+            if (_4112ef9a())
+            {
+               textWriter.Write(\"<div>really true</div>\");
+            }
+
+            textWriter.Write(\"<div>Is True</div>\");
+         }
+
+         textWriter.Write(\"<div>wat</div>\");
+         if (_9aec0d90())
+         {
+
+         textWriter.Write(\"<div>Is False</div>\");
+         }
+
+         textWriter.Write(\"</div><div class=\\\"in modal-backdrop\\\"/></body></html>\");
+      }
+   }
 }
 ```
 
