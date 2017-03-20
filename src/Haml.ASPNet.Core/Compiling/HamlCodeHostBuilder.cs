@@ -64,6 +64,12 @@ namespace Haml.Compiling
             expressions.Push(new List<StatementSyntax>());
         }
 
+        public void PrintExpressionResult(string code)
+        {
+            FlushStringRun();
+            expressions.Peek().Add(TextRunWriteSyntax(SyntaxFactory.ParseExpression(code)));
+        }
+
         public string NewCodeBlock(string content, TypeSyntax returnType)
         {
             var methodName = string.Format("_{0:x}", content.GetHashCode());
@@ -150,16 +156,21 @@ namespace Haml.Compiling
             expressions.Peek().Add(SyntaxFactory.IfStatement(conditional, SyntaxFactory.Block(expression)));
         }
 
+        private static ExpressionStatementSyntax TextRunWriteSyntax(ExpressionSyntax value)
+        {
+            return SyntaxFactory.ExpressionStatement(
+                        SyntaxFactory.InvocationExpression(
+                            SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, SyntaxFactory.IdentifierName("textWriter"), SyntaxFactory.IdentifierName("Write")),
+                                SyntaxFactory.ArgumentList(SyntaxFactory.SingletonSeparatedList<ArgumentSyntax>(SyntaxFactory.Argument(value)))));
+        }
+
         private void FlushStringRun()
         {
             if (textRun.Length == 0)
             {
                 return;
             }
-            var v = SyntaxFactory.InvocationExpression(
-                        SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, SyntaxFactory.IdentifierName("textWriter"), SyntaxFactory.IdentifierName("Write")), 
-                            SyntaxFactory.ArgumentList(SyntaxFactory.SingletonSeparatedList<ArgumentSyntax>(SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(textRun.ToString()))))));
-            expressions.Peek().Add(SyntaxFactory.ExpressionStatement(v));
+            expressions.Peek().Add(TextRunWriteSyntax(SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(textRun.ToString()))));
             textRun.Clear();
         }
     }

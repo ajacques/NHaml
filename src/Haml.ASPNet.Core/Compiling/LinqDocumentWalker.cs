@@ -63,7 +63,7 @@ namespace Haml.Compiling
 
         private void Walk(HamlNodeEval node)
         {
-            CompileAndInjectCodeThunk(node.Content);
+            _codeClassBuilder.PrintExpressionResult(node.Content);
         }
         
         private void Walk(HamlNodeCode node)
