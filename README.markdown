@@ -28,95 +28,55 @@ HAML:
     %title Hello world
     %meta{ charset: 'utf-8' }
     %meta{ content: 'width=device-width, initial-scale=1.0, maximum-scale=1.0', name: 'viewport' }
-  %body{ data: model.GetType.ToString.ToUpperInvariant }
-    .page-wrap
+  %body
+    .page-wrap{ class: DateTime.Now.ToString("yyyy") }
       = DateTime.Now.ToString("yyyy-mm-dd")
       %h1= new Random().Next().ToString()
       %p= model.ToString()
       .content-pane.container
-      - if true
+      - if (true)
+        - if (1 > 0)
+          %div really true
         %div Is True
+      - else
+        %div wat
+      - if (false)
+        %div Is False
     .modal-backdrop.in
+
 ```
 
 Gets compiled to:
 
 ```
-sealed class __haml_UserCode_CompilationTarget
+using System;
+using System.IO;
+
+internal sealed class __haml_UserCode_CompilationTarget
 {
-   public __haml_UserCode_CompilationTarget(System.String _modelType)
-   {
-      model = _modelType;
-   }
+	private string model;
 
-   System.String model;
-   private string _91ff3507()
-   {
-      return DateTime.Now.ToString(\"yyyy\");
-   }
+	public __haml_UserCode_CompilationTarget(string _modelType)
+	{
+		this.model = _modelType;
+	}
 
-   private string _779c068e()
-   {
-      return DateTime.Now.ToString(\"yyyy-mm-dd\");
-   }
-
-   private string _79112ab0()
-   {
-      return new Random().Next().ToString();
-   }
-
-   private string _ea04f18()
-   {
-      return model.ToString();
-   }
-
-   private bool _e6180ba9()
-   {
-      return true;
-   }
-
-   private bool _4112ef9a()
-   {
-      return 1 > 0;
-   }
-
-   private bool _9aec0d90()
-   {
-      return false;
-   }
-
-   public void render(System.IO.TextWriter textWriter)
-   {
-      {
-         textWriter.Write(\"<!DOCTYPE html><html lang=\\\"en\\\"><head><title>Hello world</title><meta charset=\\\"utf-8\\\"/><meta content=\\\"width=device-width, initial-scale=1.0, maximum-scale=1.0\\\" name=\\\"viewport\\\"/></head><body><div class=\\\"page-wrap \");
-         textWriter.Write(_91ff3507());
-         textWriter.Write(\"\\\">\");
-         textWriter.Write(_779c068e());
-         textWriter.Write(\"<h1>\");
-         textWriter.Write(_79112ab0());
-         textWriter.Write(\"</h1><p>\");
-         textWriter.Write(_ea04f18());
-         textWriter.Write(\"</p><div class=\\\"container content-pane\\\"/>\");
-         if (_e6180ba9())
-         {
-            if (_4112ef9a())
-            {
-               textWriter.Write(\"<div>really true</div>\");
-            }
-
-            textWriter.Write(\"<div>Is True</div>\");
-         }
-
-         textWriter.Write(\"<div>wat</div>\");
-         if (_9aec0d90())
-         {
-
-         textWriter.Write(\"<div>Is False</div>\");
-         }
-
-         textWriter.Write(\"</div><div class=\\\"in modal-backdrop\\\"/></body></html>\");
-      }
-   }
+	public void render(TextWriter textWriter)
+	{
+		textWriter.Write("<!DOCTYPE html><html lang=\"en\"><head><title>Hello world</title><meta charset=\"utf-8\"/><meta content=\"width=device-width, initial-scale=1.0, maximum-scale=1.0\" name=\"viewport\"/></head><body><div class=\"page-wrap ");
+		textWriter.Write(DateTime.get_Now().ToString("yyyy"));
+		textWriter.Write("\">");
+		textWriter.Write(DateTime.get_Now().ToString("yyyy-mm-dd"));
+		textWriter.Write("<h1>");
+		textWriter.Write(new Random().Next().ToString());
+		textWriter.Write("</h1><p>");
+		textWriter.Write(this.model.ToString());
+		textWriter.Write("</p><div class=\"container content-pane\"/>");
+		textWriter.Write("<div>really true</div>");
+		textWriter.Write("<div>Is True</div>");
+		textWriter.Write("<div>wat</div>");
+		textWriter.Write("</div><div class=\"in modal-backdrop\"/></body></html>");
+	}
 }
 ```
 
