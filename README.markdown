@@ -74,7 +74,6 @@ internal sealed class __haml_UserCode_CompilationTarget
 		textWriter.Write("</p><div class=\"container content-pane\"/>");
 		textWriter.Write("<div>really true</div>");
 		textWriter.Write("<div>Is True</div>");
-		textWriter.Write("<div>wat</div>");
 		textWriter.Write("</div><div class=\"in modal-backdrop\"/></body></html>");
 	}
 }
