@@ -1,4 +1,4 @@
-﻿using Haml.Framework;
+using Haml.Framework;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -141,18 +141,26 @@ namespace Haml.Compiling
         public void ConditionalElseBegin()
         {
             FlushStringRun();
+            expressions.Push(new List<StatementSyntax>());
         }
 
         public void ConditionalElseEnd()
         {
             FlushStringRun();
+            var expr = expressions.Pop();
+            var ifStatement = expressions.Peek()[expressions.Peek().Count - 1] as IfStatementSyntax;
+            if (ifStatement == null)
+            {
+                throw new Exception();
+            }
+            ifStatement.WithElse(SyntaxFactory.ElseClause(SyntaxFactory.Block(expr)));
         }
 
-        public void ConditionalEnd(string methodName)
+        public void ConditionalEnd(string expressionContent)
         {
             FlushStringRun();
             var expression = expressions.Pop();
-            var conditional = SyntaxFactory.ParseExpression(string.Format("{0}()", methodName));
+            var conditional = SyntaxFactory.ParseExpression(expressionContent);
             expressions.Peek().Add(SyntaxFactory.IfStatement(conditional, SyntaxFactory.Block(expression)));
         }
 

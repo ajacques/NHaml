@@ -1,4 +1,4 @@
-﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
@@ -65,7 +65,7 @@ namespace Haml.Compiling
         {
             _codeClassBuilder.PrintExpressionResult(node.Content);
         }
-        
+
         private void Walk(HamlNodeCode node)
         {
             var content = node.Content.Trim();
@@ -74,11 +74,10 @@ namespace Haml.Compiling
             {
                 int start = content.IndexOf('(') + 1;
                 string expression = content.Substring(start, content.Length - start - 1);
-                string methodName = CompileCodeThunk(expression, SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.BoolKeyword)));
 
                 _templateILStream.ConditionalBegin();
                 Walk(node.Children);
-                _templateILStream.ConditionalEnd(methodName);
+                _templateILStream.ConditionalEnd(expression);
             }
             else if (content == "else")
             {
@@ -137,7 +136,7 @@ namespace Haml.Compiling
                         {
                             _templateILStream.Write(' ');
                         }
-                        CompileAndInjectCodeThunk(value.Content);
+                        _codeClassBuilder.PrintExpressionResult(value.Content);
                         leadingSpace = true;
                     }
                 }
