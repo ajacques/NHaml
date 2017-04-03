@@ -1,4 +1,4 @@
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
@@ -14,15 +14,22 @@ namespace Haml.Compiling
         private Type compilationTargetType;
         private ITemplateRenderer _templateILStream;
         private HamlCodeHostBuilder _codeClassBuilder;
+        private TemplateRenderContext context;
 
         public LinqDocumentWalker(Type modelType)
         {
             _templateILStream = _codeClassBuilder = new HamlCodeHostBuilder(modelType);
         }
 
-        public void Walk(HamlDocument document)
+        private void Walk(HamlDocument document)
         {
             Walk(document.Children);
+        }
+
+        public void Render(TemplateRenderContext context)
+        {
+            this.context = context;
+            Walk(context.LayoutRoot);
         }
 
         public void Walk(IEnumerable<HamlNode> nodes)
@@ -52,13 +59,18 @@ namespace Haml.Compiling
                 if (nodeType == typeof(HamlNodeDocType))
                     Walk((HamlNodeDocType)node);
                 if (nodeType == typeof(HamlNodePartial))
-                    continue;
+                    Walk((HamlNodePartial)node);
             }
         }
 
         private void Walk(HamlNodeDocType docType)
         {
             _templateILStream.Write("<!DOCTYPE html>");
+        }
+
+        private void Walk(HamlNodePartial partial)
+        {
+            Walk(context.MainTemplate);
         }
 
         private void Walk(HamlNodeEval node)
