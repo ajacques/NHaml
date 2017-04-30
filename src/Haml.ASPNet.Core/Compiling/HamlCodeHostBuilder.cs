@@ -70,6 +70,12 @@ namespace Haml.Compiling
             expressions.Peek().Add(TextRunWriteSyntax(SyntaxFactory.ParseExpression(code)));
         }
 
+        public void InlineCodeExpression(string content)
+        {
+            FlushStringRun();
+            expressions.Peek().Add(SyntaxFactory.ParseStatement(content));
+        }
+
         public string NewCodeBlock(string content, TypeSyntax returnType)
         {
             var methodName = string.Format("_{0:x}", content.GetHashCode());

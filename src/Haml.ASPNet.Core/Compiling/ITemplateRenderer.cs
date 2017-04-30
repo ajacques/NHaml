@@ -6,6 +6,7 @@
         void Write(char content);
         void Write(string format, params object[] formats);
         void PrintExpressionResult(string code);
+        void InlineCodeExpression(string code);
         void ConditionalBegin();
         void ConditionalElseBegin();
         void ConditionalElseEnd();

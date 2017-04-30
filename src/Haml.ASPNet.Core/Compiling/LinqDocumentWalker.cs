@@ -70,7 +70,22 @@ namespace Haml.Compiling
 
         private void Walk(HamlNodePartial partial)
         {
-            Walk(context.MainTemplate);
+            var content = partial.Content.Trim();
+            if (content == "yield")
+            {
+                Walk(context.MainTemplate);
+            }
+            else if (content.StartsWith("render "))
+            {
+                int start = content.IndexOf('\'') + 1;
+                string template = content.Substring(start, content.LastIndexOf('\'') - start);
+                if (!template.EndsWith(".haml"))
+                {
+                    template = template + ".haml";
+                }
+                template = "_" + template;
+                Walk(context.GetTemplate(template));
+            }
         }
 
         private void Walk(HamlNodeEval node)
@@ -99,7 +114,7 @@ namespace Haml.Compiling
             }
             else
             {
-                throw new Exception("Side-effect free haml code block unsupported.");
+                _templateILStream.InlineCodeExpression(content);
             }
         }
 

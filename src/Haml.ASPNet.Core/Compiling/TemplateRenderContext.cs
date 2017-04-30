@@ -13,10 +13,29 @@ namespace Haml.Compiling
     {
         public TemplateRenderContext(string layoutPath, string mainTemplate)
         {
-            HamlTreeParser parser = new HamlTreeParser(new HamlFileLexer());
+            Parser = new HamlTreeParser(new HamlFileLexer());
 
-            LayoutRoot = parser.ParseViewSource(new FileViewSource(new FileInfo(layoutPath)));
-            MainTemplate = parser.ParseViewSource(new FileViewSource(new FileInfo(mainTemplate)));
+            TemplateDirectory = new DirectoryInfo(mainTemplate).Parent;
+
+            LayoutRoot = Parser.ParseViewSource(new FileViewSource(new FileInfo(layoutPath)));
+            MainTemplate = Parser.ParseViewSource(new FileViewSource(new FileInfo(mainTemplate)));
+        }
+
+        private HamlTreeParser Parser
+        {
+            get;
+            set;
+        }
+
+        public HamlDocument GetTemplate(string relativePath)
+        {
+            return Parser.ParseViewSource(new FileViewSource(new FileInfo(Path.Combine(TemplateDirectory.FullName, relativePath))));
+        }
+
+        public DirectoryInfo TemplateDirectory
+        {
+            get;
+            private set;
         }
 
         public HamlDocument LayoutRoot
