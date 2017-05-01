@@ -36,8 +36,7 @@ namespace Haml.Compiling
                     MetadataReference.CreateFromFile(Path.Combine(rootDirectory, "System.Runtime.dll")),
                     MetadataReference.CreateFromFile(Path.Combine(rootDirectory, "mscorlib.dll")),
                     MetadataReference.CreateFromFile(modelType.GetTypeInfo().Assembly.Location),
-                    MetadataReference.CreateFromFile(typeof(HtmlHelper).GetTypeInfo().Assembly.Location),
-                    MetadataReference.CreateFromFile(typeof(BaseViewClass).GetTypeInfo().Assembly.Location))
+                    MetadataReference.CreateFromFile(typeof(HtmlHelper).GetTypeInfo().Assembly.Location))
                 .WithOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, optimizationLevel: OptimizationLevel.Release));
             _compilationTargetClass = SyntaxFactory.ClassDeclaration(className);
             _compilationUnit = SyntaxFactory.CompilationUnit()

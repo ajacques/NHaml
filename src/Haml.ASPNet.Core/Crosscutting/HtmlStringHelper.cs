@@ -6,9 +6,9 @@ namespace System.Web.NHaml.Crosscutting
     {
         enum AttributeParseStates { Normal, SingleQuoteEscaped, DoubleQuoteEscaped };
 
-        public static bool IsHtmlIdentifierChar(Char curChar)
+        public static bool IsHtmlIdentifierChar(char curChar)
         {
-            return (Char.IsLetterOrDigit(curChar)
+            return (char.IsLetterOrDigit(curChar)
                     || curChar == '_'
                     || curChar == '-');
         }
