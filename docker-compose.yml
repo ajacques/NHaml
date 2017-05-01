@@ -1,0 +1,8 @@
+version: '2'
+
+services:
+  testwebsite:
+    image: testwebsite
+    build:
+      context: ./src/TestWebsite
+      dockerfile: Dockerfile

@@ -1,0 +1,8 @@
+version: '2'
+
+services:
+  testwebsite:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    ports:
+      - "80"

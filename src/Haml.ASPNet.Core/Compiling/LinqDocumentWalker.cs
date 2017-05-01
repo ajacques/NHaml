@@ -123,19 +123,11 @@ namespace Haml.Compiling
             CompileAndInjectCodeThunk(node.VariableName);
         }
 
-        private void Walk(HamlNodeHtmlAttribute node)
-        {
-            _templateILStream.Write(" {0}=\"", node.Name);
-            this.Walk(node.Children);
-            _templateILStream.Write('"');
-        }
-
         private void Walk(HamlNodeTag node)
         {
             _templateILStream.Write('<');
             _templateILStream.Write(node.NamespaceQualifiedTagName);
 
-            // There's two ways of defining a class, so we need to reconcile them and create the string writer
             var attributes = node.Attributes.GroupBy(a => a.Name);
             foreach (var attrGroup in attributes)
             {
