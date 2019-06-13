@@ -40,7 +40,7 @@ namespace NHaml
             object instance = Activator.CreateInstance(renderer, viewModel);
             renderMethod.Invoke(instance, new object[] { writer });
             timer.Stop();
-            Console.WriteLine("X-Runtime-us: {0}", timer.ElapsedTicks / 10);
+            Debug.WriteLine("X-Runtime-us: {0}", timer.ElapsedTicks / 10);
             return writer.FlushAsync();
         }
     }

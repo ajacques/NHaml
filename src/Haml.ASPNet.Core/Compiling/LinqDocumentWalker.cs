@@ -81,7 +81,7 @@ namespace Haml.Compiling
                 string template = content.Substring(start, content.LastIndexOf('\'') - start);
                 if (!template.EndsWith(".haml"))
                 {
-                    template = template + ".haml";
+                    template += ".haml";
                 }
                 template = "_" + template;
                 Walk(context.GetTemplate(template));
@@ -128,7 +128,7 @@ namespace Haml.Compiling
             _templateILStream.Write('<');
             _templateILStream.Write(node.NamespaceQualifiedTagName);
 
-            var attributes = node.Attributes.GroupBy(a => a.Name);
+            var attributes = node.Attributes.OrderBy(a => a.Name).GroupBy(a => a.Name);
             foreach (var attrGroup in attributes)
             {
                 _templateILStream.Write(" {0}=\"", attrGroup.Key);

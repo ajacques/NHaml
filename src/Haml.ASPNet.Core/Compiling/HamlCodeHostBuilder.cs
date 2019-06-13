@@ -18,9 +18,9 @@ namespace Haml.Compiling
         private Compilation _compilation;
         private ClassDeclarationSyntax _compilationTargetClass;
         private CompilationUnitSyntax _compilationUnit;
-        private Type _modelType;
+        private readonly Type _modelType;
         private MethodDeclarationSyntax _renderMethod;
-        private StringBuilder textRun;
+        private readonly StringBuilder textRun;
         private Stack<IList<StatementSyntax>> expressions;
 
         public HamlCodeHostBuilder(Type modelType)
@@ -52,7 +52,8 @@ namespace Haml.Compiling
                         .AddParameterListParameters(SyntaxFactory.Parameter(SyntaxFactory.Identifier("_modelType")).WithType(modelTypeToken))
                         .AddBodyStatements(SyntaxFactory.ExpressionStatement(
                             SyntaxFactory.AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, SyntaxFactory.IdentifierName("model"), SyntaxFactory.IdentifierName("_modelType")))))
-               .AddMembers(SyntaxFactory.FieldDeclaration(SyntaxFactory.VariableDeclaration(modelTypeToken, SyntaxFactory.SingletonSeparatedList(SyntaxFactory.VariableDeclarator("model")))));
+               .AddMembers(SyntaxFactory.FieldDeclaration(SyntaxFactory.VariableDeclaration(modelTypeToken, SyntaxFactory.SingletonSeparatedList(SyntaxFactory.VariableDeclarator("model"))))
+                    .AddModifiers(SyntaxFactory.Token(SyntaxKind.ReadOnlyKeyword)));
 
             _renderMethod = SyntaxFactory.MethodDeclaration(SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.VoidKeyword)), "render")
                                 .AddParameterListParameters(SyntaxFactory.Parameter(SyntaxFactory.Identifier("textWriter")).WithType(SyntaxFactory.ParseTypeName(typeof(TextWriter).FullName)))
@@ -64,8 +65,16 @@ namespace Haml.Compiling
 
         public void PrintExpressionResult(string code)
         {
-            FlushStringRun();
-            expressions.Peek().Add(TextRunWriteSyntax(SyntaxFactory.ParseExpression(code)));
+            ExpressionSyntax content = SyntaxFactory.ParseExpression(code);
+            if (content is LiteralExpressionSyntax literal)
+            {
+                textRun.Append(literal.Token.Text);
+            }
+            else
+            {
+                FlushStringRun();
+                expressions.Peek().Add(TextRunWriteSyntax(SyntaxFactory.ParseExpression(code)));
+            }
         }
 
         public void InlineCodeExpression(string content)
